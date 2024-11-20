@@ -12,12 +12,21 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0 # Fetch all history for accurate diff
+        ref: ${{ github.event.pull_request.head.sha }} # Ensure correct PR head is checked out
+
+    - name: Fetch base branch
+      run: |
+        # Fetch the base branch (target branch of the PR)
+        git fetch origin $GITHUB_BASE_REF
+        git checkout $GITHUB_BASE_REF
 
     - name: Fetch list of changed files
       id: changed-files
       run: |
         # Get list of changed files in the PR
-        CHANGED_FILES=$(git diff --name-only "$GITHUB_BASE_REF" "$GITHUB_HEAD_REF")
+        CHANGED_FILES=$(git diff --name-only origin/$GITHUB_BASE_REF $GITHUB_HEAD_REF)
         echo "$CHANGED_FILES" > changed_files.txt
         echo "Changed files:"
         cat changed_files.txt
@@ -47,7 +56,3 @@ jobs:
           exit 1
         fi
       shell: bash
-
-    - name: Fail the workflow if dependencies are missing
-      if: steps.dependency-check.outcome == 'failure'
-      run: exit 1
