@@ -13,20 +13,26 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
       with:
-        fetch-depth: 0 # Fetch all history for accurate diff
-        ref: ${{ github.event.pull_request.head.sha }} # Ensure correct PR head is checked out
+        fetch-depth: 0 # Fetch full history to enable comparisons
 
-    - name: Fetch base branch
+    - name: Fetch base branch explicitly
       run: |
-        # Fetch the base branch (target branch of the PR)
-        git fetch origin $GITHUB_BASE_REF
-        git checkout $GITHUB_BASE_REF
+        # Fetch the base branch to ensure it's available locally
+        git fetch origin ${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
 
     - name: Fetch list of changed files
       id: changed-files
       run: |
-        # Get list of changed files in the PR
-        CHANGED_FILES=$(git diff --name-only origin/$GITHUB_BASE_REF $GITHUB_HEAD_REF)
+        # Ensure the base and head branches are defined correctly
+        BASE_BRANCH="origin/${{ github.base_ref }}"
+        HEAD_BRANCH="${{ github.head_ref }}"
+
+        # Check and print branch references
+        echo "Base branch: $BASE_BRANCH"
+        echo "Head branch: $HEAD_BRANCH"
+
+        # Get the list of changed files between the base and head branches
+        CHANGED_FILES=$(git diff --name-only $BASE_BRANCH HEAD)
         echo "$CHANGED_FILES" > changed_files.txt
         echo "Changed files:"
         cat changed_files.txt
