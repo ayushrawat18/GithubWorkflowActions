@@ -1,0 +1,43 @@
+name: PR Dependency Check
+
+on:
+  pull_request:
+    paths:
+      - '**/*.xml'
+
+jobs:
+  dependency-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install jq
+
+    - name: Check for missing dependent files
+      run: |
+        # Get list of changed files in the PR
+        CHANGED_FILES=$(jq -r '.pull_request.head.repo.name as $repo | .pull_request.head.sha as $sha | .pull_request.url + "/files" | @uri' "$GITHUB_EVENT_PATH" | xargs curl -s | jq -r '.[].filename')
+
+        # Initialize failure flag
+        FAIL=false
+
+        # Loop through changed files and check for dependencies
+        for FILE in $CHANGED_FILES; do
+          if [[ "$FILE" =~ ^a_.*\.xml$ ]]; then
+            DEPENDENT_FILE="${FILE/_/_dependent_}"
+            if ! echo "$CHANGED_FILES" | grep -q "$DEPENDENT_FILE"; then
+              echo "Error: Missing dependent file for $FILE. Expected: $DEPENDENT_FILE"
+              FAIL=true
+            fi
+          fi
+        done
+
+        # Fail the step if any dependency is missing
+        if $FAIL; then
+          exit 1
+        fi
